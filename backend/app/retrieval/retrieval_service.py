@@ -100,7 +100,12 @@ def _search_hybrid(query: str, top_k: int, debug: bool) -> dict:
 def search(query: str, top_k: int, search_mode: str = "hybrid", debug: bool = False) -> dict:
     """Run retrieval in the requested mode and return final (and optionally debug) results."""
     if search_mode == "semantic":
-        return _search_semantic(query, top_k, debug)
-    if search_mode == "keyword":
-        return _search_keyword(query, top_k, debug)
-    return _search_hybrid(query, top_k, debug)
+        response = _search_semantic(query, top_k, debug)
+    elif search_mode == "keyword":
+        response = _search_keyword(query, top_k, debug)
+    else:
+        response = _search_hybrid(query, top_k, debug)
+
+    if debug:
+        response["debug"]["search_mode"] = search_mode
+    return response

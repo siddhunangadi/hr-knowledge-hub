@@ -1,5 +1,7 @@
 """Pinecone vector store — writes chunk embeddings, reads them back by similarity."""
 
+from functools import lru_cache
+
 from pinecone import Pinecone
 
 from app.config.settings import get_settings
@@ -10,17 +12,12 @@ class VectorStoreError(Exception):
     """Raised when a Pinecone read or write fails."""
 
 
-_index = None
-
-
+@lru_cache
 def _get_index():
     """Return the Pinecone index, creating the connection once and reusing it."""
-    global _index
-    if _index is None:
-        settings = get_settings()
-        pc = Pinecone(api_key=settings.pinecone_api_key)
-        _index = pc.Index(settings.pinecone_index_name)
-    return _index
+    settings = get_settings()
+    pc = Pinecone(api_key=settings.pinecone_api_key)
+    return pc.Index(settings.pinecone_index_name)
 
 
 def index_chunks(chunks: list[Chunk], embeddings: list[list[float]]) -> None:

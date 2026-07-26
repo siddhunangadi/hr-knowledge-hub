@@ -1,5 +1,7 @@
 """Stores documents and chunk text/metadata in Supabase Postgres."""
 
+from functools import lru_cache
+
 from supabase import Client, create_client
 
 from app.config.settings import get_settings
@@ -10,16 +12,11 @@ class DocumentRepositoryError(Exception):
     """Raised when a Supabase read or write fails."""
 
 
-_client = None
-
-
+@lru_cache
 def _get_client() -> Client:
     """Return the Supabase client, creating the connection once and reusing it."""
-    global _client
-    if _client is None:
-        settings = get_settings()
-        _client = create_client(settings.supabase_url, settings.supabase_key)
-    return _client
+    settings = get_settings()
+    return create_client(settings.supabase_url, settings.supabase_key)
 
 
 def save_document(document_id: str, filename: str) -> None:

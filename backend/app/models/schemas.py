@@ -4,6 +4,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
+SearchMode = Literal["semantic", "keyword", "hybrid"]
+
 
 class UploadResponse(BaseModel):
     """Response returned after a document has been ingested and indexed."""
@@ -20,7 +22,7 @@ class SearchRequest(BaseModel):
 
     query: str
     top_k: int = 5
-    search_mode: Literal["semantic", "keyword", "hybrid"] = "hybrid"
+    search_mode: SearchMode = "hybrid"
     debug: bool = False
 
 
@@ -51,6 +53,7 @@ class RerankedResult(BaseModel):
 class RetrievalDebugInfo(BaseModel):
     """Intermediate results from each retrieval stage — for inspection, not for clients to act on."""
 
+    search_mode: SearchMode
     dense_results: list[RankedResult] = []
     bm25_results: list[RankedResult] = []
     rrf_results: list[RankedResult] = []
