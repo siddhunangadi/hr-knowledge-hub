@@ -1,4 +1,4 @@
-"""Orchestrates hybrid retrieval: dense search + BM25 -> RRF -> rerank."""
+"""Orchestrates retrieval: semantic (dense only), keyword (BM25 only), or hybrid (both + RRF + rerank)."""
 
 from dataclasses import dataclass
 
@@ -6,7 +6,7 @@ from app.repositories.document_repository import fetch_chunks_by_ids
 from app.retrieval.dense_search import search_dense
 from app.retrieval.hybrid_search import reciprocal_rank_fusion
 from app.retrieval.keyword_search import search_bm25
-from app.retrieval.reranker import NVIDIARerankerClient
+from app.retrieval.reranker import reranker_client
 
 # Fetch a wider candidate pool than top_k so RRF and the reranker have
 # enough chunks to actually reorder.
@@ -24,8 +24,42 @@ class RankedChunk:
     text: str
 
 
-def search(query: str, top_k: int, debug: bool = False) -> dict:
-    """Run the hybrid retrieval pipeline and return final (and optionally debug) results."""
+def _hydrate(ranked_results: list[dict], top_k: int) -> list[RankedChunk]:
+    """Attach filename/page_number/text from Supabase to {chunk_id, score} results."""
+    top_results = ranked_results[:top_k]
+    chunks_by_id = fetch_chunks_by_ids([item["chunk_id"] for item in top_results])
+    return [
+        RankedChunk(
+            chunk_id=item["chunk_id"],
+            score=item["score"],
+            filename=chunks_by_id[item["chunk_id"]]["filename"],
+            page_number=chunks_by_id[item["chunk_id"]]["page_number"],
+            text=chunks_by_id[item["chunk_id"]]["text"],
+        )
+        for item in top_results
+    ]
+
+
+def _search_semantic(query: str, top_k: int, debug: bool) -> dict:
+    """Dense (Pinecone) search only — no BM25, no reranker."""
+    dense_results = search_dense(query, top_k=top_k)
+    response = {"results": _hydrate(dense_results, top_k)}
+    if debug:
+        response["debug"] = {"dense_results": dense_results}
+    return response
+
+
+def _search_keyword(query: str, top_k: int, debug: bool) -> dict:
+    """BM25 search only — no dense search, no reranker."""
+    bm25_results = search_bm25(query, top_k=top_k)
+    response = {"results": _hydrate(bm25_results, top_k)}
+    if debug:
+        response["debug"] = {"bm25_results": bm25_results}
+    return response
+
+
+def _search_hybrid(query: str, top_k: int, debug: bool) -> dict:
+    """Dense + BM25 -> Reciprocal Rank Fusion -> NVIDIA reranker."""
     candidate_k = top_k * CANDIDATE_MULTIPLIER
 
     dense_results = search_dense(query, top_k=candidate_k)
@@ -36,7 +70,7 @@ def search(query: str, top_k: int, debug: bool = False) -> dict:
     chunks_by_id = fetch_chunks_by_ids(fused_chunk_ids)
     passages = [chunks_by_id[chunk_id]["text"] for chunk_id in fused_chunk_ids]
 
-    reranked = NVIDIARerankerClient().rerank(query, passages)
+    reranked = reranker_client.rerank(query, passages)
 
     results = []
     for item in reranked[:top_k]:
@@ -61,3 +95,12 @@ def search(query: str, top_k: int, debug: bool = False) -> dict:
             "reranked_results": reranked,
         }
     return response
+
+
+def search(query: str, top_k: int, search_mode: str = "hybrid", debug: bool = False) -> dict:
+    """Run retrieval in the requested mode and return final (and optionally debug) results."""
+    if search_mode == "semantic":
+        return _search_semantic(query, top_k, debug)
+    if search_mode == "keyword":
+        return _search_keyword(query, top_k, debug)
+    return _search_hybrid(query, top_k, debug)

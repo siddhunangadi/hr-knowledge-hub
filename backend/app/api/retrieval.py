@@ -1,4 +1,4 @@
-"""Hybrid retrieval search endpoint."""
+"""Retrieval search endpoint — semantic, keyword, or hybrid."""
 
 import logging
 
@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.ingestion.embedder import EmbeddingError
 from app.ingestion.vector_store import VectorStoreError
-from app.models.schemas import ChunkResponse, SearchRequest, SearchResponse
+from app.models.schemas import ChunkResponse, RetrievalDebugInfo, SearchRequest, SearchResponse
 from app.repositories.document_repository import DocumentRepositoryError
 from app.retrieval.reranker import RerankError
 from app.retrieval.retrieval_service import search
@@ -17,9 +17,14 @@ logger = logging.getLogger(__name__)
 
 @router.post("/search", response_model=SearchResponse)
 def search_documents(request: SearchRequest) -> SearchResponse:
-    """Run hybrid retrieval (dense + BM25 + RRF + rerank) for a query."""
+    """Run retrieval (semantic, keyword, or hybrid) for a query."""
     try:
-        result = search(request.query, top_k=request.top_k, debug=request.debug)
+        result = search(
+            request.query,
+            top_k=request.top_k,
+            search_mode=request.search_mode,
+            debug=request.debug,
+        )
     except EmbeddingError as exc:
         logger.exception("Query embedding failed")
         raise HTTPException(status_code=502, detail="Embedding service unavailable") from exc
@@ -44,4 +49,5 @@ def search_documents(request: SearchRequest) -> SearchResponse:
         for chunk in result["results"]
     ]
 
-    return SearchResponse(query=request.query, results=results, debug=result.get("debug"))
+    debug = RetrievalDebugInfo(**result["debug"]) if "debug" in result else None
+    return SearchResponse(query=request.query, results=results, debug=debug)

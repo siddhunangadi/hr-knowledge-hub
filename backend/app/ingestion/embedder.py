@@ -38,3 +38,8 @@ class NVIDIAEmbeddingClient:
 
         data = response.json()["data"]
         return [item["embedding"] for item in data]
+
+
+# Shared instance so ingestion and retrieval reuse one client instead of
+# creating a new one (and re-reading settings) on every call.
+embedding_client = NVIDIAEmbeddingClient()

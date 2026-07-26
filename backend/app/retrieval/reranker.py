@@ -37,3 +37,8 @@ class NVIDIARerankerClient:
 
         rankings = response.json()["rankings"]
         return [{"index": item["index"], "score": item["logit"]} for item in rankings]
+
+
+# Shared instance so retrieval reuses one client instead of creating a new
+# one on every search request.
+reranker_client = NVIDIARerankerClient()

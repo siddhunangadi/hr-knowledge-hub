@@ -1,6 +1,6 @@
 """Pydantic request/response models for the API."""
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -20,6 +20,7 @@ class SearchRequest(BaseModel):
 
     query: str
     top_k: int = 5
+    search_mode: Literal["semantic", "keyword", "hybrid"] = "hybrid"
     debug: bool = False
 
 
@@ -33,9 +34,32 @@ class ChunkResponse(BaseModel):
     text: str
 
 
+class RankedResult(BaseModel):
+    """A chunk id and score from one stage of the retrieval pipeline."""
+
+    chunk_id: str
+    score: float
+
+
+class RerankedResult(BaseModel):
+    """A reranked candidate, identified by its position in the passage list sent to the reranker."""
+
+    index: int
+    score: float
+
+
+class RetrievalDebugInfo(BaseModel):
+    """Intermediate results from each retrieval stage — for inspection, not for clients to act on."""
+
+    dense_results: list[RankedResult] = []
+    bm25_results: list[RankedResult] = []
+    rrf_results: list[RankedResult] = []
+    reranked_results: list[RerankedResult] = []
+
+
 class SearchResponse(BaseModel):
     """Response returned by the hybrid retrieval search endpoint."""
 
     query: str
     results: list[ChunkResponse]
-    debug: Optional[dict] = None
+    debug: Optional[RetrievalDebugInfo] = None

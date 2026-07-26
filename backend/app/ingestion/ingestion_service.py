@@ -5,7 +5,7 @@ import uuid
 from dataclasses import dataclass
 
 from app.ingestion.chunker import chunk_pages
-from app.ingestion.embedder import NVIDIAEmbeddingClient
+from app.ingestion.embedder import embedding_client
 from app.ingestion.parser import parse_docx, parse_pdf
 from app.ingestion.vector_store import index_chunks
 from app.repositories.document_repository import save_chunks, save_document
@@ -56,7 +56,7 @@ def ingest_document(filename: str, content_type: str, file_bytes: bytes) -> Inge
     document_id = str(uuid.uuid4())
     chunks = chunk_pages(pages, document_id=document_id, filename=filename)
 
-    embeddings = NVIDIAEmbeddingClient().embed([chunk.text for chunk in chunks])
+    embeddings = embedding_client.embed([chunk.text for chunk in chunks])
 
     save_document(document_id, filename)
     save_chunks(chunks)

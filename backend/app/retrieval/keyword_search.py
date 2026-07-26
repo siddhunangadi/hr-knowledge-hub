@@ -1,6 +1,7 @@
 """Keyword retrieval: a small BM25 implementation over chunk text in Supabase."""
 
 import math
+import re
 from collections import Counter
 
 from app.repositories.document_repository import fetch_all_chunks
@@ -8,9 +9,13 @@ from app.repositories.document_repository import fetch_all_chunks
 BM25_K1 = 1.5
 BM25_B = 0.75
 
+# Matches runs of letters/digits, so trailing punctuation ("leave." vs "leave,")
+# doesn't create separate tokens the way a plain str.split() would.
+TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+
 
 def _tokenize(text: str) -> list[str]:
-    return text.lower().split()
+    return TOKEN_PATTERN.findall(text.lower())
 
 
 def search_bm25(query: str, top_k: int) -> list[dict]:

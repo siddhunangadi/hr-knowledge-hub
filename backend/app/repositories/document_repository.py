@@ -10,9 +10,16 @@ class DocumentRepositoryError(Exception):
     """Raised when a Supabase read or write fails."""
 
 
+_client = None
+
+
 def _get_client() -> Client:
-    settings = get_settings()
-    return create_client(settings.supabase_url, settings.supabase_key)
+    """Return the Supabase client, creating the connection once and reusing it."""
+    global _client
+    if _client is None:
+        settings = get_settings()
+        _client = create_client(settings.supabase_url, settings.supabase_key)
+    return _client
 
 
 def save_document(document_id: str, filename: str) -> None:
