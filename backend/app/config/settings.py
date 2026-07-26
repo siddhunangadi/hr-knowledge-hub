@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     )
     nvidia_reranker_model: str = "nvidia/llama-nemotron-rerank-vl-1b-v2"
 
+    # NVIDIA NIM text generation API
+    nvidia_llm_api_key: str = ""
+    nvidia_llm_url: str = "https://integrate.api.nvidia.com/v1/chat/completions"
+    nvidia_llm_model: str = "meta/llama-3.1-8b-instruct"
+
     # Pinecone
     pinecone_api_key: str = ""
     pinecone_index_name: str = "hr-knowledge-hub"

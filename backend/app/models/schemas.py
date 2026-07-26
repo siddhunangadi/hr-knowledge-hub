@@ -66,3 +66,19 @@ class SearchResponse(BaseModel):
     query: str
     results: list[ChunkResponse]
     debug: Optional[RetrievalDebugInfo] = None
+
+
+class Citation(BaseModel):
+    """Where an answer's supporting text came from — filename and page only."""
+
+    filename: str
+    page_number: Optional[int]
+
+
+class ChatResponse(BaseModel):
+    """Response returned by the grounded answer generation endpoint."""
+
+    answer: str
+    confidence: int
+    citations: list[Citation]
+    debug: Optional[RetrievalDebugInfo] = None
