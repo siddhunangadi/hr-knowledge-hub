@@ -12,7 +12,8 @@ Rules:
 - If the answer is not present in the context, respond with exactly this sentence:
   "{NO_ANSWER_MESSAGE}"
 - Keep answers concise and professional.
-- Do not invent facts that are not stated in the context."""
+- Do not invent facts that are not stated in the context.
+- When multiple retrieved documents contain different or conflicting information, prefer the highest-ranked retrieved context and do not combine contradictory statements."""
 
 
 def _build_context(chunks: list[RankedChunk]) -> str:

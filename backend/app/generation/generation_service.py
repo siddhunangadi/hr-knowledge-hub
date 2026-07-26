@@ -29,8 +29,17 @@ def _estimate_confidence(chunks: list[RankedChunk]) -> int:
 
 
 def _build_citations(chunks: list[RankedChunk]) -> list[dict]:
-    """Return {filename, page_number} for each retrieved chunk — no LLM involvement."""
-    return [{"filename": chunk.filename, "page_number": chunk.page_number} for chunk in chunks]
+    """Return {chunk_id, filename, page_number} for each retrieved chunk — no LLM involvement.
+
+    chunk_id is included for internal debugging/retrieval inspection. The
+    public Citation model only declares filename/page_number, so it's
+    dropped automatically when the API layer builds the response — no
+    similarity score, reranker score, or vector id is ever included.
+    """
+    return [
+        {"chunk_id": chunk.chunk_id, "filename": chunk.filename, "page_number": chunk.page_number}
+        for chunk in chunks
+    ]
 
 
 def generate_answer(query: str, top_k: int, search_mode: str, debug: bool) -> dict:
