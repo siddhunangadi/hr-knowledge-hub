@@ -16,6 +16,19 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     cors_origins: list[str] = ["*"]
 
+    # NVIDIA NIM embedding API
+    nvidia_api_key: str = ""
+    nvidia_embedding_url: str = "https://integrate.api.nvidia.com/v1/embeddings"
+    nvidia_embedding_model: str = "nvidia/nv-embedqa-e5-v5"
+
+    # Pinecone
+    pinecone_api_key: str = ""
+    pinecone_index_name: str = "hr-knowledge-hub"
+
+    # Supabase
+    supabase_url: str = ""
+    supabase_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
