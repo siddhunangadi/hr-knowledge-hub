@@ -23,7 +23,7 @@ class NVIDIARerankerClient:
         try:
             response = requests.post(
                 self._settings.nvidia_reranker_url,
-                headers={"Authorization": f"Bearer {self._settings.nvidia_api_key}"},
+                headers={"Authorization": f"Bearer {self._settings.nvidia_reranker_api_key}"},
                 json={
                     "model": self._settings.nvidia_reranker_model,
                     "query": {"text": query},

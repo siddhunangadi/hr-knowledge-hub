@@ -24,7 +24,7 @@ class NVIDIAEmbeddingClient:
         try:
             response = requests.post(
                 self._settings.nvidia_embedding_url,
-                headers={"Authorization": f"Bearer {self._settings.nvidia_api_key}"},
+                headers={"Authorization": f"Bearer {self._settings.nvidia_embedding_api_key}"},
                 json={
                     "input": texts,
                     "model": self._settings.nvidia_embedding_model,

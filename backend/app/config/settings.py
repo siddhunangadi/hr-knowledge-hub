@@ -17,11 +17,12 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["*"]
 
     # NVIDIA NIM embedding API
-    nvidia_api_key: str = ""
+    nvidia_embedding_api_key: str = ""
     nvidia_embedding_url: str = "https://integrate.api.nvidia.com/v1/embeddings"
     nvidia_embedding_model: str = "nvidia/nv-embedqa-e5-v5"
 
     # NVIDIA NIM reranker API
+    nvidia_reranker_api_key: str = ""
     nvidia_reranker_url: str = (
         "https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-nemotron-rerank-vl-1b-v2/reranking"
     )
