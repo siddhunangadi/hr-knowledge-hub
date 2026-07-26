@@ -35,6 +35,6 @@ def root() -> dict[str, object]:
     return {
         "project": settings.app_name,
         "version": settings.app_version,
-        "phase": 1,
+        "phase": "complete",
         "status": settings.environment,
     }
