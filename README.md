@@ -4,15 +4,13 @@ AI-powered Internal HR Knowledge Assistant using Hybrid Retrieval-Augmented Gene
 
 ## Overview
 
-HR Knowledge Hub lets HR teams upload internal documents (handbooks, policies, hiring guidelines) and ask natural-language questions about them. The system retrieves relevant content using hybrid search (dense + BM25), reranks results, and generates grounded answers with citations.
-
-This repository currently implements **Phase 1: Project Foundation** only.
+HR Knowledge Hub is planned as a tool for HR teams to upload internal documents (handbooks, policies, hiring guidelines) and ask natural-language questions about them, using hybrid search and grounded generation. This repository currently implements **Phase 1: Project Foundation** only — the retrieval and generation pipeline described in the tagline does not exist yet (see Future Roadmap).
 
 ## Problem Statement
 
-HR teams spend significant time manually searching through multiple policy documents, employee handbooks, hiring guidelines, and internship policies to answer routine questions. HR Knowledge Hub centralizes this into a single, ask-a-question interface.
+HR teams spend significant time manually searching through multiple policy documents, employee handbooks, hiring guidelines, and internship policies to answer routine questions. HR Knowledge Hub aims to centralize this into a single, ask-a-question interface.
 
-## Features (Phase 1)
+## Implemented Features (Phase 1)
 
 - FastAPI backend with `/health` and `/` endpoints
 - Streamlit frontend that checks backend connectivity
@@ -20,7 +18,7 @@ HR teams spend significant time manually searching through multiple policy docum
 - Structured logging
 - Dockerized backend and frontend, orchestrated with Docker Compose
 
-No document upload, retrieval, embeddings, or chat functionality exists yet — these arrive in later phases.
+No document upload, retrieval, embeddings, or chat functionality exists yet — these arrive in later phases (see Future Roadmap).
 
 ## Folder Structure
 
@@ -29,22 +27,17 @@ backend/
   app/
     api/            # FastAPI routers (health check)
     config/         # Pydantic Settings configuration
-    services/       # (empty — future business logic)
-    repositories/   # (empty — future data access layer)
-    ingestion/       # (empty — future document ingestion)
-    retrieval/       # (empty — future hybrid retrieval)
-    generation/      # (empty — future LLM generation)
-    models/          # (empty — future Pydantic/DB models)
-    utils/           # Logging and shared helpers
-    main.py          # FastAPI app entrypoint
+    utils/          # Logging setup
+    main.py         # FastAPI app entrypoint
 frontend/
-  streamlit_app.py   # Streamlit UI
-docs/
+  streamlit_app.py  # Streamlit UI
 requirements.txt
 .env.example
 Dockerfile
 docker-compose.yml
 ```
+
+Folders for future phases (`services`, `repositories`, `ingestion`, `retrieval`, `generation`, `models`) are intentionally not created yet — they will be added when Phase 2+ actually needs them.
 
 ## Tech Stack
 

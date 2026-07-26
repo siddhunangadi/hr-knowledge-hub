@@ -24,13 +24,11 @@ app.include_router(health_router)
 
 
 @app.get("/")
-def root() -> dict[str, str]:
+def root() -> dict[str, object]:
     """Return basic project information."""
     return {
-        "name": settings.app_name,
+        "project": settings.app_name,
         "version": settings.app_version,
-        "description": (
-            "AI-powered Internal HR Knowledge Assistant using "
-            "Hybrid Retrieval-Augmented Generation (Hybrid RAG)."
-        ),
+        "phase": 1,
+        "status": settings.environment,
     }

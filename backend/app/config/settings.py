@@ -14,8 +14,6 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
     log_level: str = "INFO"
-
-    backend_url: str = "http://localhost:8000"
     cors_origins: list[str] = ["*"]
 
 
