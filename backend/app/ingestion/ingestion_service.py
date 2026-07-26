@@ -1,12 +1,13 @@
 """Orchestrates the document ingestion pipeline: parse -> chunk -> embed -> store."""
 
+import time
 import uuid
 from dataclasses import dataclass
 
 from app.ingestion.chunker import chunk_pages
-from app.ingestion.embedder import embed_texts
-from app.ingestion.indexer import index_chunks
+from app.ingestion.embedder import NVIDIAEmbeddingClient
 from app.ingestion.parser import parse_docx, parse_pdf
+from app.ingestion.vector_store import index_chunks
 from app.repositories.document_repository import save_chunks, save_document
 
 MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
@@ -31,6 +32,7 @@ class IngestionResult:
     document_id: str
     filename: str
     chunks_created: int
+    processing_time_ms: int
     status: str
 
 
@@ -45,6 +47,8 @@ def validate_upload(filename: str, content_type: str, file_size: int) -> str:
 
 def ingest_document(filename: str, content_type: str, file_bytes: bytes) -> IngestionResult:
     """Run the full ingestion pipeline for one uploaded file."""
+    start_time = time.perf_counter()
+
     file_kind = validate_upload(filename, content_type, len(file_bytes))
 
     pages = parse_pdf(file_bytes) if file_kind == "pdf" else parse_docx(file_bytes)
@@ -52,15 +56,18 @@ def ingest_document(filename: str, content_type: str, file_bytes: bytes) -> Inge
     document_id = str(uuid.uuid4())
     chunks = chunk_pages(pages, document_id=document_id, filename=filename)
 
-    embeddings = embed_texts([chunk.text for chunk in chunks])
+    embeddings = NVIDIAEmbeddingClient().embed([chunk.text for chunk in chunks])
 
     save_document(document_id, filename)
     save_chunks(chunks)
     index_chunks(chunks, embeddings)
 
+    processing_time_ms = int((time.perf_counter() - start_time) * 1000)
+
     return IngestionResult(
         document_id=document_id,
         filename=filename,
         chunks_created=len(chunks),
+        processing_time_ms=processing_time_ms,
         status="indexed",
     )

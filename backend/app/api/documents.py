@@ -10,16 +10,17 @@ from app.ingestion.ingestion_service import (
     UnsupportedFileTypeError,
     ingest_document,
 )
-from app.ingestion.indexer import IndexingError
 from app.ingestion.parser import DocumentParsingError
+from app.ingestion.vector_store import VectorStoreError
+from app.models.schemas import UploadResponse
 from app.repositories.document_repository import DocumentRepositoryError
 
 router = APIRouter(prefix="/api/documents")
 logger = logging.getLogger(__name__)
 
 
-@router.post("/upload")
-async def upload_document(file: UploadFile) -> dict[str, object]:
+@router.post("/upload", response_model=UploadResponse)
+async def upload_document(file: UploadFile) -> UploadResponse:
     """Validate, parse, chunk, embed, and index an uploaded PDF or DOCX file."""
     file_bytes = await file.read()
 
@@ -36,13 +37,14 @@ async def upload_document(file: UploadFile) -> dict[str, object]:
     except EmbeddingError as exc:
         logger.exception("Embedding generation failed")
         raise HTTPException(status_code=502, detail="Embedding service unavailable") from exc
-    except (IndexingError, DocumentRepositoryError) as exc:
+    except (VectorStoreError, DocumentRepositoryError) as exc:
         logger.exception("Document storage failed")
         raise HTTPException(status_code=502, detail="Document storage unavailable") from exc
 
-    return {
-        "document_id": result.document_id,
-        "filename": result.filename,
-        "chunks_created": result.chunks_created,
-        "status": result.status,
-    }
+    return UploadResponse(
+        document_id=result.document_id,
+        filename=result.filename,
+        chunks_created=result.chunks_created,
+        processing_time_ms=result.processing_time_ms,
+        status=result.status,
+    )

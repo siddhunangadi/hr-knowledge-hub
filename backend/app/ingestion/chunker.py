@@ -20,6 +20,11 @@ class Chunk:
     chunk_index: int
     page_number: int | None
 
+    @property
+    def chunk_id(self) -> str:
+        """The id used to identify this chunk in both Pinecone and Supabase."""
+        return f"{self.document_id}-{self.chunk_index}"
+
 
 def chunk_pages(pages: list[str], document_id: str, filename: str) -> list[Chunk]:
     """Split page texts into Chunk objects, preserving page numbers.
