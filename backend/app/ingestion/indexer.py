@@ -27,7 +27,7 @@ def index_chunks(chunks: list[Chunk], embeddings: list[list[float]]) -> None:
                 "page_number": chunk.page_number or 0,
             },
         }
-        for chunk, embedding in zip(chunks, embeddings, strict=True)
+        for chunk, embedding in zip(chunks, embeddings)
     ]
 
     try:
