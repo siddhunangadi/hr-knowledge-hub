@@ -12,7 +12,8 @@ import requests
 import streamlit as st
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-SEARCH_MODES = ["hybrid", "semantic", "keyword"]
+DEFAULT_SEARCH_MODE = "hybrid"
+DEFAULT_TOP_K = 8
 
 st.set_page_config(page_title="HR Knowledge Hub", page_icon="📄", layout="wide")
 
@@ -203,9 +204,6 @@ def render_search() -> None:
     st.header("Search & Chat")
 
     query = st.text_input("Ask a question about the uploaded HR documents")
-    col1, col2 = st.columns([2, 1])
-    search_mode = col1.selectbox("Search Mode", SEARCH_MODES)
-    top_k = col2.number_input("Top K", min_value=1, max_value=20, value=8)
 
     if st.button("Ask", type="primary") and query:
         with st.spinner("Retrieving context and generating an answer..."):
@@ -213,7 +211,7 @@ def render_search() -> None:
             # take up to 90s (see llm_client.py), on top of retrieval time.
             result = _post_json(
                 "/api/chat",
-                {"query": query, "top_k": top_k, "search_mode": search_mode, "debug": True},
+                {"query": query, "top_k": DEFAULT_TOP_K, "search_mode": DEFAULT_SEARCH_MODE, "debug": True},
                 timeout=120,
             )
         if result:
