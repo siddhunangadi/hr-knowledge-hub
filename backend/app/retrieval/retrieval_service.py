@@ -25,7 +25,11 @@ class RankedChunk:
 
 
 def _hydrate(ranked_results: list[dict], top_k: int) -> list[RankedChunk]:
-    """Attach filename/page_number/text from Supabase to {chunk_id, score} results."""
+    """Attach filename/page_number/text from Supabase to {chunk_id, score} results.
+
+    Skips any chunk_id Pinecone/BM25 returned that has no matching Supabase
+    row — the two stores aren't written transactionally, so they can drift.
+    """
     top_results = ranked_results[:top_k]
     chunks_by_id = fetch_chunks_by_ids([item["chunk_id"] for item in top_results])
     return [
@@ -37,6 +41,7 @@ def _hydrate(ranked_results: list[dict], top_k: int) -> list[RankedChunk]:
             text=chunks_by_id[item["chunk_id"]]["text"],
         )
         for item in top_results
+        if item["chunk_id"] in chunks_by_id
     ]
 
 
@@ -68,6 +73,9 @@ def _search_hybrid(query: str, top_k: int, debug: bool) -> dict:
 
     fused_chunk_ids = [item["chunk_id"] for item in fused_results]
     chunks_by_id = fetch_chunks_by_ids(fused_chunk_ids)
+    # Drop any chunk_id missing from Supabase before building passages, so
+    # the reranker's later index-based lookup stays aligned.
+    fused_chunk_ids = [cid for cid in fused_chunk_ids if cid in chunks_by_id]
     passages = [chunks_by_id[chunk_id]["text"] for chunk_id in fused_chunk_ids]
 
     reranked = reranker_client.rerank(query, passages)
