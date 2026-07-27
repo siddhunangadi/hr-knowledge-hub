@@ -115,7 +115,6 @@ def render_sidebar() -> str:
             f"{label}</div>",
             unsafe_allow_html=True,
         )
-        st.caption(BACKEND_URL)
 
         st.divider()
         page = st.radio(
