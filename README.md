@@ -66,7 +66,7 @@ graph TD
 | LLM | NVIDIA NIM Chat Completions API |
 | Containerization | Docker, Docker Compose |
 
-## Project Structure
+## Folder Structure
 
 ```
 backend/

@@ -56,6 +56,15 @@ def _post_file(path: str, file) -> dict | None:
         return None
 
 
+def _render_table(rows: list[dict], columns: dict[str, str], empty_message: str) -> None:
+    """Render a list of dicts as a table with friendly column names, or a placeholder message."""
+    if not rows:
+        st.caption(empty_message)
+        return
+    renamed = [{columns.get(key, key): value for key, value in row.items()} for row in rows]
+    st.dataframe(renamed, use_container_width=True, hide_index=True)
+
+
 def render_sidebar() -> str:
     """Render the sidebar (branding, backend health, nav) and return the selected page."""
     with st.sidebar:
@@ -63,60 +72,81 @@ def render_sidebar() -> str:
         st.caption("AI-powered Internal HR Knowledge Assistant using Hybrid RAG")
         st.divider()
 
-        st.subheader("Backend status")
+        st.subheader("Backend Status")
         try:
             response = requests.get(f"{BACKEND_URL}/health", timeout=5)
             if response.ok:
-                st.success(f"Connected — {BACKEND_URL}")
+                st.success("🟢 Connected")
             else:
-                st.error(f"Backend returned {response.status_code}")
+                st.error(f"🔴 Backend returned {response.status_code}")
         except requests.RequestException:
-            st.error(f"Cannot reach backend at {BACKEND_URL}")
+            st.error("🔴 Cannot reach backend")
+        st.caption(BACKEND_URL)
 
         st.divider()
-        return st.radio(
+        page = st.radio(
             "Navigate",
             ["Dashboard", "Upload Documents", "Search & Chat", "Retrieval Inspector"],
         )
+
+        st.divider()
+        st.caption("Built with FastAPI, Pinecone, Supabase, and NVIDIA NIM.")
+        return page
 
 
 def render_dashboard() -> None:
     """Show document/chunk/vector counts and the list of documents indexed this session."""
     st.header("Dashboard")
-    st.caption("Reflects documents uploaded during this Streamlit session.")
+    st.info(
+        "📌 These stats reflect documents uploaded **during this browser session only**. "
+        "There is no document-listing API yet, so nothing is persisted across restarts."
+    )
 
     documents = st.session_state.uploaded_documents
     total_chunks = sum(doc["chunks_created"] for doc in documents)
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Documents", len(documents))
-    col2.metric("Chunks", total_chunks)
-    col3.metric("Vectors", total_chunks)  # one Pinecone vector per chunk
-    col4.metric("Last Upload", documents[-1]["filename"] if documents else "—")
+    with st.container(border=True):
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Documents", len(documents))
+        col2.metric("Chunks", total_chunks)
+        col3.metric("Vectors", total_chunks, help="One Pinecone vector per chunk")
+        col4.metric("Last Upload", documents[-1]["filename"] if documents else "—")
 
-    st.subheader("Indexed Documents")
+    st.subheader("Indexed Documents (this session)")
     if not documents:
-        st.info("No documents indexed yet — upload one on the **Upload Documents** page.")
+        st.caption("No documents indexed yet — upload one on the **Upload Documents** page.")
     else:
-        st.dataframe(documents, use_container_width=True, hide_index=True)
+        _render_table(
+            documents,
+            columns={
+                "filename": "Filename",
+                "chunks_created": "Chunks",
+                "processing_time_ms": "Processing Time (ms)",
+                "uploaded_at": "Uploaded At",
+            },
+            empty_message="",
+        )
 
 
 def render_upload() -> None:
     """Upload a PDF or DOCX file and show the indexing result."""
     st.header("Upload Documents")
-    st.caption("Supported formats: PDF, DOCX. Maximum size: 5 MB.")
+    st.caption("Supported formats: PDF, DOCX · Maximum size: 5 MB")
 
     uploaded_file = st.file_uploader("Choose a file", type=["pdf", "docx"])
 
     if uploaded_file and st.button("Upload & Index", type="primary"):
-        with st.spinner("Parsing, chunking, embedding, and indexing..."):
+        with st.spinner(f"Parsing, chunking, embedding, and indexing {uploaded_file.name}..."):
             result = _post_file("/api/documents/upload", uploaded_file)
 
         if result:
-            st.success(f"Indexed **{result['filename']}** in {result['processing_time_ms']} ms")
-            col1, col2 = st.columns(2)
-            col1.metric("Chunks created", result["chunks_created"])
-            col2.metric("Status", result["status"])
+            st.success(
+                f"✅ Indexed **{result['filename']}** in {result['processing_time_ms']} ms"
+            )
+            with st.container(border=True):
+                col1, col2 = st.columns(2)
+                col1.metric("Chunks Created", result["chunks_created"])
+                col2.metric("Status", result["status"])
 
             st.session_state.uploaded_documents.append(
                 {
@@ -128,13 +158,23 @@ def render_upload() -> None:
             )
 
 
+def _confidence_badge(confidence: int) -> None:
+    """Render a color-coded confidence badge: high (green), medium (orange), low (red)."""
+    if confidence >= 70:
+        st.success(f"🟢 High confidence — {confidence}%")
+    elif confidence >= 40:
+        st.warning(f"🟠 Medium confidence — {confidence}%")
+    else:
+        st.error(f"🔴 Low confidence — {confidence}%")
+
+
 def render_search() -> None:
     """Ask a question, run retrieval + grounded generation, and show the answer."""
     st.header("Search & Chat")
 
     query = st.text_input("Ask a question about the uploaded HR documents")
     col1, col2 = st.columns([2, 1])
-    search_mode = col1.selectbox("Search mode", SEARCH_MODES)
+    search_mode = col1.selectbox("Search Mode", SEARCH_MODES)
     top_k = col2.number_input("Top K", min_value=1, max_value=20, value=5)
 
     if st.button("Ask", type="primary") and query:
@@ -150,23 +190,27 @@ def render_search() -> None:
 
     result = st.session_state.last_chat_result
     if not result:
-        st.info("Ask a question above to see a grounded answer with citations.")
+        st.caption("Ask a question above to see a grounded answer with citations.")
         return
 
-    st.subheader("Question")
-    st.write(result["query"])
+    st.divider()
 
-    st.subheader("Answer")
-    st.write(result["answer"])
+    with st.container(border=True):
+        st.subheader("Question")
+        st.write(result["query"])
 
-    st.subheader("Confidence")
-    st.progress(result["confidence"] / 100, text=f"{result['confidence']}%")
+        st.subheader("Answer")
+        st.write(result["answer"])
 
-    st.subheader("Source Documents")
-    if result["citations"]:
-        st.dataframe(result["citations"], use_container_width=True, hide_index=True)
-    else:
-        st.info("No sources — the answer wasn't grounded in the uploaded documents.")
+        st.subheader("Confidence")
+        _confidence_badge(result["confidence"])
+
+        st.subheader("Source Documents")
+        _render_table(
+            result["citations"],
+            columns={"filename": "Filename", "page_number": "Page"},
+            empty_message="No sources — the answer wasn't grounded in the uploaded documents.",
+        )
 
 
 def render_inspector() -> None:
@@ -178,22 +222,28 @@ def render_inspector() -> None:
     debug = result.get("debug") if result else None
 
     if not debug:
-        st.info("Run a search on the **Search & Chat** page first to see pipeline internals.")
+        st.caption("Run a search on the **Search & Chat** page first to see pipeline internals.")
         return
 
     st.write(f"Search mode: **{debug['search_mode']}**")
+    st.divider()
 
-    st.subheader("Dense Search Results (Pinecone)")
-    st.dataframe(debug["dense_results"] or [{"info": "not used in this search mode"}])
+    score_columns = {"chunk_id": "Chunk ID", "score": "Score"}
+    not_used = "Not used in this search mode."
 
-    st.subheader("Keyword Search Results (BM25)")
-    st.dataframe(debug["bm25_results"] or [{"info": "not used in this search mode"}])
+    st.subheader("1. Dense Search (Pinecone)")
+    _render_table(debug["dense_results"], score_columns, not_used)
 
-    st.subheader("RRF Fused Results")
-    st.dataframe(debug["rrf_results"] or [{"info": "not used in this search mode"}])
+    st.subheader("2. Keyword Search (BM25)")
+    _render_table(debug["bm25_results"], score_columns, not_used)
 
-    st.subheader("Reranked Results (NVIDIA Reranker)")
-    st.dataframe(debug["reranked_results"] or [{"info": "not used in this search mode"}])
+    st.subheader("3. Reciprocal Rank Fusion")
+    _render_table(debug["rrf_results"], score_columns, not_used)
+
+    st.subheader("4. NVIDIA Reranker")
+    _render_table(
+        debug["reranked_results"], {"index": "Passage Index", "score": "Score"}, not_used
+    )
 
 
 page = render_sidebar()
