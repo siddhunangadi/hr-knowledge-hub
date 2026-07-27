@@ -19,10 +19,21 @@ st.set_page_config(page_title="HR Knowledge Hub", page_icon="📄", layout="wide
 st.markdown(
     """
     <style>
-    .block-container {padding-top: 2.5rem; max-width: 1100px;}
-    h1, h2, h3 {font-weight: 600;}
-    [data-testid="stMetricValue"] {font-weight: 600;}
+    .block-container {padding-top: 2.5rem; max-width: 1080px;}
+    h1, h2, h3 {font-weight: 600; letter-spacing: -0.01em;}
+    [data-testid="stMetricValue"] {font-weight: 600; font-size: 1.75rem;}
+    [data-testid="stMetricLabel"] {color: #6B7280;}
     div[data-testid="stStatusWidget"] {display: none;}
+    .status-row {display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; margin: 0.25rem 0 0.75rem;}
+    .status-dot {width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0;}
+    .status-dot.ok {background: #12B76A;}
+    .status-dot.err {background: #F04438;}
+    .chip {display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem;
+           border-radius: 999px; font-size: 0.85rem; font-weight: 500;}
+    .chip.high {background: #ECFDF3; color: #027A48;}
+    .chip.medium {background: #FFFAEB; color: #B54708;}
+    .chip.low {background: #FEF3F2; color: #B42318;}
+    .answer-block {font-size: 1.02rem; line-height: 1.6;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -92,15 +103,18 @@ def render_sidebar() -> str:
         st.caption("AI-powered internal HR assistant · Hybrid RAG")
         st.divider()
 
-        st.subheader("Backend Status")
         try:
             response = requests.get(f"{BACKEND_URL}/health", timeout=5)
-            if response.ok:
-                st.success("Connected")
-            else:
-                st.error(f"Backend returned {response.status_code}")
+            connected = response.ok
+            label = "Connected" if connected else f"Backend returned {response.status_code}"
         except requests.RequestException:
-            st.error("Cannot reach backend")
+            connected = False
+            label = "Cannot reach backend"
+        st.markdown(
+            f'<div class="status-row"><span class="status-dot {"ok" if connected else "err"}"></span>'
+            f"{label}</div>",
+            unsafe_allow_html=True,
+        )
         st.caption(BACKEND_URL)
 
         st.divider()
@@ -121,12 +135,12 @@ def render_dashboard() -> None:
     documents = _get_json("/api/documents") or []
     total_chunks = sum(doc["chunks_created"] for doc in documents)
 
-    with st.container(border=True):
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Documents", len(documents))
-        col2.metric("Chunks", total_chunks)
-        col3.metric("Vectors", total_chunks, help="One Pinecone vector per chunk")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Documents", len(documents))
+    col2.metric("Chunks", total_chunks)
+    col3.metric("Vectors", total_chunks, help="One Pinecone vector per chunk")
 
+    st.divider()
     st.subheader("Indexed Documents")
     if not documents:
         st.caption("No documents indexed yet — upload one on the **Upload Documents** page.")
@@ -159,20 +173,20 @@ def render_upload() -> None:
                 f"Indexed **{result['filename']}** in {result['processing_time_ms']} ms — "
                 "see the **Dashboard** for the updated document list."
             )
-            with st.container(border=True):
-                col1, col2 = st.columns(2)
-                col1.metric("Chunks Created", result["chunks_created"])
-                col2.metric("Status", result["status"])
+            col1, col2 = st.columns(2)
+            col1.metric("Chunks Created", result["chunks_created"])
+            col2.metric("Status", result["status"])
 
 
-def _confidence_badge(confidence: int) -> None:
-    """Render a color-coded confidence badge: high (green), medium (orange), low (red)."""
+def _confidence_chip(confidence: int) -> str:
+    """Return an inline HTML chip for a confidence score: high (green), medium (amber), low (red)."""
     if confidence >= 70:
-        st.success(f"High confidence — {confidence}%")
+        tier, label = "high", "High confidence"
     elif confidence >= 40:
-        st.warning(f"Medium confidence — {confidence}%")
+        tier, label = "medium", "Medium confidence"
     else:
-        st.error(f"Low confidence — {confidence}%")
+        tier, label = "low", "Low confidence"
+    return f'<span class="chip {tier}">{label} · {confidence}%</span>'
 
 
 def render_search() -> None:
@@ -205,22 +219,17 @@ def render_search() -> None:
 
     st.divider()
 
-    with st.container(border=True):
-        st.subheader("Question")
-        st.write(result["query"])
+    st.caption(result["query"])
+    st.markdown(f'<div class="answer-block">{result["answer"]}</div>', unsafe_allow_html=True)
+    st.markdown(_confidence_chip(result["confidence"]), unsafe_allow_html=True)
 
-        st.subheader("Answer")
-        st.write(result["answer"])
-
-        st.subheader("Confidence")
-        _confidence_badge(result["confidence"])
-
-        st.subheader("Source Documents")
-        _render_table(
-            result["citations"],
-            columns={"filename": "Filename", "page_number": "Page"},
-            empty_message="No sources — the answer wasn't grounded in the uploaded documents.",
-        )
+    st.write("")
+    st.subheader("Sources")
+    _render_table(
+        result["citations"],
+        columns={"filename": "Filename", "page_number": "Page"},
+        empty_message="No sources — the answer wasn't grounded in the uploaded documents.",
+    )
 
 
 def render_inspector() -> None:
@@ -235,25 +244,24 @@ def render_inspector() -> None:
         st.caption("Run a search on the **Search & Chat** page first to see pipeline internals.")
         return
 
-    st.write(f"Search mode: **{debug['search_mode']}**")
-    st.divider()
+    st.caption(f"Search mode: **{debug['search_mode']}**")
 
     score_columns = {"chunk_id": "Chunk ID", "score": "Score"}
     not_used = "Not used in this search mode."
 
-    st.subheader("1. Dense Search (Pinecone)")
-    _render_table(debug["dense_results"], score_columns, not_used)
-
-    st.subheader("2. Keyword Search (BM25)")
-    _render_table(debug["bm25_results"], score_columns, not_used)
-
-    st.subheader("3. Reciprocal Rank Fusion")
-    _render_table(debug["rrf_results"], score_columns, not_used)
-
-    st.subheader("4. NVIDIA Reranker")
-    _render_table(
-        debug["reranked_results"], {"index": "Passage Index", "score": "Score"}, not_used
+    dense_tab, bm25_tab, rrf_tab, reranked_tab = st.tabs(
+        ["Dense (Pinecone)", "Keyword (BM25)", "Rank Fusion", "Reranker"]
     )
+    with dense_tab:
+        _render_table(debug["dense_results"], score_columns, not_used)
+    with bm25_tab:
+        _render_table(debug["bm25_results"], score_columns, not_used)
+    with rrf_tab:
+        _render_table(debug["rrf_results"], score_columns, not_used)
+    with reranked_tab:
+        _render_table(
+            debug["reranked_results"], {"index": "Passage Index", "score": "Score"}, not_used
+        )
 
 
 page = render_sidebar()
