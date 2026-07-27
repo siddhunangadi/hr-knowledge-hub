@@ -30,7 +30,7 @@ class SearchRequest(BaseModel):
     """Request body for the hybrid retrieval search endpoint."""
 
     query: str
-    top_k: int = 5
+    top_k: int = 8
     search_mode: SearchMode = "hybrid"
     debug: bool = False
 

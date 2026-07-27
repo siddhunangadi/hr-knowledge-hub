@@ -170,7 +170,7 @@ def render_search() -> None:
     query = st.text_input("Ask a question about the uploaded HR documents")
     col1, col2 = st.columns([2, 1])
     search_mode = col1.selectbox("Search Mode", SEARCH_MODES)
-    top_k = col2.number_input("Top K", min_value=1, max_value=20, value=5)
+    top_k = col2.number_input("Top K", min_value=1, max_value=20, value=8)
 
     if st.button("Ask", type="primary") and query:
         with st.spinner("Retrieving context and generating an answer..."):

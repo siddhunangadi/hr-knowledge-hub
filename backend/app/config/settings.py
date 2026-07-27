@@ -38,7 +38,12 @@ class Settings(BaseSettings):
     # NVIDIA NIM text generation API
     nvidia_llm_api_key: str = ""
     nvidia_llm_url: str = "https://integrate.api.nvidia.com/v1/chat/completions"
-    nvidia_llm_model: str = "meta/llama-3.1-8b-instruct"
+    # 70B rather than 8B: the smaller model was verified to fail on indirect
+    # / inferential questions (e.g. "does X from 2013 mean policy Y from
+    # 2009 is still active?") even when the exact answer was the only chunk
+    # in its context — it answered correctly once rephrased as a direct
+    # question, so this was a reasoning-capacity issue, not a retrieval one.
+    nvidia_llm_model: str = "meta/llama-3.1-70b-instruct"
 
     # Pinecone
     pinecone_api_key: str = ""
