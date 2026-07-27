@@ -120,7 +120,7 @@ def render_topbar() -> str:
         f'<span class="status-dot {"ok" if connected else "err"}"></span>{label}</div>'
         '<div style="text-align: center;">'
         '<h1 style="margin-bottom: 0;">HR Knowledge Hub</h1>'
-        '<div style="color: #6B7280;">AI-powered internal HR assistant · Hybrid RAG</div>'
+        '<div style="color: #6B7280;">AI-powered internal HR assistant</div>'
         "</div>",
         unsafe_allow_html=True,
     )
