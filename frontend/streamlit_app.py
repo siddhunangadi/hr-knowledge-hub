@@ -27,15 +27,12 @@ st.markdown(
     div[data-testid="stStatusWidget"] {display: none;}
     section[data-testid="stSidebar"] {display: none;}
 
-    .topbar {display: flex; align-items: center; justify-content: space-between;
-             padding-bottom: 0.5rem;}
-    .topbar h1 {font-size: 1.4rem; margin: 0;}
     .status-row {display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;}
     .status-dot {width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0;}
     .status-dot.ok {background: #12B76A;}
     .status-dot.err {background: #F04438;}
 
-    div[role="radiogroup"] {gap: 0.25rem;}
+    div[role="radiogroup"] {gap: 0.25rem; justify-content: center;}
     div[role="radiogroup"] label {
         border-radius: 8px; padding: 0.35rem 0.75rem; margin-right: 0.25rem;
     }
@@ -118,19 +115,15 @@ def render_topbar() -> str:
         connected = False
         label = "Cannot reach backend"
 
-    left, right = st.columns([3, 1])
-    with left:
-        st.markdown(
-            '<div class="topbar"><h1>HR Knowledge Hub</h1></div>'
-            '<div style="color: #6B7280; margin-top: -0.5rem;">AI-powered internal HR assistant · Hybrid RAG</div>',
-            unsafe_allow_html=True,
-        )
-    with right:
-        st.markdown(
-            f'<div class="status-row" style="justify-content: flex-end; margin-top: 0.5rem;">'
-            f'<span class="status-dot {"ok" if connected else "err"}"></span>{label}</div>',
-            unsafe_allow_html=True,
-        )
+    st.markdown(
+        f'<div class="status-row" style="justify-content: flex-end;">'
+        f'<span class="status-dot {"ok" if connected else "err"}"></span>{label}</div>'
+        '<div style="text-align: center;">'
+        '<h1 style="margin-bottom: 0;">HR Knowledge Hub</h1>'
+        '<div style="color: #6B7280;">AI-powered internal HR assistant · Hybrid RAG</div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     page = st.radio(
         "Navigate",
