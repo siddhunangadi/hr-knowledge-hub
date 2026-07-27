@@ -7,15 +7,30 @@ from app.generation.prompt_builder import NO_ANSWER_MESSAGE, build_prompt
 from app.retrieval.retrieval_service import RankedChunk, search
 
 
-def _estimate_confidence(chunks: list[RankedChunk]) -> int:
-    """Estimate answer confidence from retrieval scores, as a 0-100 percentage.
+# Each search_mode's chunk.score comes from a different scale: reranker
+# logits (hybrid), cosine similarity (semantic), or raw BM25 (keyword).
+# Centering the sigmoid at 0 for all three badly miscalibrates confidence,
+# since e.g. a genuinely correct hybrid-mode match often scores around -2 to
+# -3, not near 0. CENTER is the score treated as "50% confidence" per mode,
+# and SPREAD controls how quickly confidence moves away from 50% as the
+# score moves away from CENTER. Values below are a rough calibration from
+# real examples observed against actual documents, not derived analytically
+# — if a different reranker/embedding model is swapped in later, recheck
+# these against a few real queries.
+_CONFIDENCE_CALIBRATION = {
+    "hybrid": {"center": -3.0, "spread": 2.0},
+    "semantic": {"center": 0.35, "spread": 0.15},
+    "keyword": {"center": 5.0, "spread": 5.0},
+}
+
+
+def _estimate_confidence(chunks: list[RankedChunk], search_mode: str) -> int:
+    """Estimate answer confidence from the top chunk's score, as a 0-100 percentage.
 
     Formula: take the top-ranked chunk's score (chunks are already sorted
-    best-first) and squash it through a sigmoid (1 / (1 + e^-x)) into a 0-1
-    range, then scale to 0-100. A sigmoid is used because raw scores are
-    unbounded and mean different things per search_mode (BM25 score, cosine
-    similarity, or reranker logit) — this gives one consistent 0-100 scale
-    regardless of which produced them.
+    best-first), recenter and scale it per search_mode using
+    _CONFIDENCE_CALIBRATION, then squash through a sigmoid (1 / (1 + e^-x))
+    into 0-100.
 
     Only the top chunk's score is used, not an average across all returned
     chunks: the answer is grounded primarily in the single best match, and
@@ -24,8 +39,10 @@ def _estimate_confidence(chunks: list[RankedChunk]) -> int:
     """
     if not chunks:
         return 0
+    calibration = _CONFIDENCE_CALIBRATION[search_mode]
     top_score = chunks[0].score
-    probability = 1 / (1 + math.exp(-top_score))
+    normalized = (top_score - calibration["center"]) / calibration["spread"]
+    probability = 1 / (1 + math.exp(-normalized))
     return round(probability * 100)
 
 
@@ -54,7 +71,7 @@ def generate_answer(query: str, top_k: int, search_mode: str, debug: bool) -> di
     """
     retrieval = search(query, top_k=top_k, search_mode=search_mode, debug=debug)
     chunks = retrieval["results"]
-    confidence = _estimate_confidence(chunks)
+    confidence = _estimate_confidence(chunks, search_mode)
 
     if not chunks:
         response = {"answer": NO_ANSWER_MESSAGE, "confidence": confidence, "citations": []}
