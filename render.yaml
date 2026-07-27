@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: hr-knowledge-hub
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: >
+      (cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000) &
+      streamlit run frontend/streamlit_app.py --server.address=0.0.0.0 --server.port $PORT
+    envVars:
+      - key: APP_NAME
+        value: HR Knowledge Hub
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CORS_ORIGINS
+        value: '["*"]'
+      - key: BACKEND_URL
+        value: http://localhost:8000
+      - key: NVIDIA_EMBEDDING_API_KEY
+        sync: false
+      - key: NVIDIA_EMBEDDING_URL
+        value: https://integrate.api.nvidia.com/v1/embeddings
+      - key: NVIDIA_EMBEDDING_MODEL
+        value: nvidia/nv-embedqa-e5-v5
+      - key: NVIDIA_RERANKER_API_KEY
+        sync: false
+      - key: NVIDIA_RERANKER_URL
+        value: https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-nemotron-rerank-vl-1b-v2/reranking
+      - key: NVIDIA_RERANKER_MODEL
+        value: nvidia/llama-nemotron-rerank-vl-1b-v2
+      - key: NVIDIA_LLM_API_KEY
+        sync: false
+      - key: NVIDIA_LLM_URL
+        value: https://integrate.api.nvidia.com/v1/chat/completions
+      - key: NVIDIA_LLM_MODEL
+        value: meta/llama-3.1-70b-instruct
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        value: hr-knowledge-hub
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
