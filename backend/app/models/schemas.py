@@ -17,6 +17,15 @@ class UploadResponse(BaseModel):
     status: str
 
 
+class DocumentSummary(BaseModel):
+    """One row of the document list returned by GET /api/documents."""
+
+    document_id: str
+    filename: str
+    uploaded_at: str
+    chunks_created: int
+
+
 class SearchRequest(BaseModel):
     """Request body for the hybrid retrieval search endpoint."""
 

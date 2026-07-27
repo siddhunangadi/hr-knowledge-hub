@@ -10,3 +10,4 @@ python-docx==1.1.2
 langchain-text-splitters==0.3.4
 pinecone==5.4.2
 supabase==2.11.0
+pytest==8.3.4

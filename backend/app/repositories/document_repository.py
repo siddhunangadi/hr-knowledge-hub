@@ -1,5 +1,6 @@
 """Stores documents and chunk text/metadata in Supabase Postgres."""
 
+from collections import Counter
 from functools import lru_cache
 
 from supabase import Client, create_client
@@ -46,6 +47,26 @@ def save_chunks(chunks: list[Chunk]) -> None:
         _get_client().table("document_chunks").insert(rows).execute()
     except Exception as exc:
         raise DocumentRepositoryError(f"Failed to save chunks: {exc}") from exc
+
+
+def list_documents() -> list[dict]:
+    """Return every uploaded document with its filename, upload time, and chunk count."""
+    try:
+        documents = _get_client().table("documents").select("id, filename, created_at").execute()
+        chunks = _get_client().table("document_chunks").select("document_id").execute()
+    except Exception as exc:
+        raise DocumentRepositoryError(f"Failed to list documents: {exc}") from exc
+
+    chunk_counts = Counter(chunk["document_id"] for chunk in chunks.data)
+    return [
+        {
+            "document_id": doc["id"],
+            "filename": doc["filename"],
+            "uploaded_at": doc["created_at"],
+            "chunks_created": chunk_counts.get(doc["id"], 0),
+        }
+        for doc in documents.data
+    ]
 
 
 def fetch_all_chunks() -> list[dict]:

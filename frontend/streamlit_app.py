@@ -7,7 +7,6 @@ store access, and no business logic here beyond formatting responses.
 from __future__ import annotations
 
 import os
-from datetime import datetime
 
 import requests
 import streamlit as st
@@ -17,8 +16,6 @@ SEARCH_MODES = ["hybrid", "semantic", "keyword"]
 
 st.set_page_config(page_title="HR Knowledge Hub", page_icon="📄", layout="wide")
 
-if "uploaded_documents" not in st.session_state:
-    st.session_state.uploaded_documents = []
 if "last_chat_result" not in st.session_state:
     st.session_state.last_chat_result = None
 
@@ -31,6 +28,17 @@ def _error_detail(exc: requests.RequestException) -> str:
         except ValueError:
             return exc.response.text
     return str(exc)
+
+
+def _get_json(path: str) -> dict | list | None:
+    """GET from the backend and return the parsed response, or None on error."""
+    try:
+        response = requests.get(f"{BACKEND_URL}{path}", timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as exc:
+        st.error(f"Request to {path} failed: {_error_detail(exc)}")
+        return None
 
 
 def _post_json(path: str, payload: dict) -> dict | None:
@@ -95,33 +103,28 @@ def render_sidebar() -> str:
 
 
 def render_dashboard() -> None:
-    """Show document/chunk/vector counts and the list of documents indexed this session."""
+    """Show document/chunk/vector counts, fetched fresh from GET /api/documents."""
     st.header("Dashboard")
-    st.info(
-        "📌 These stats reflect documents uploaded **during this browser session only**. "
-        "There is no document-listing API yet, so nothing is persisted across restarts."
-    )
 
-    documents = st.session_state.uploaded_documents
+    documents = _get_json("/api/documents") or []
     total_chunks = sum(doc["chunks_created"] for doc in documents)
 
     with st.container(border=True):
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         col1.metric("Documents", len(documents))
         col2.metric("Chunks", total_chunks)
         col3.metric("Vectors", total_chunks, help="One Pinecone vector per chunk")
-        col4.metric("Last Upload", documents[-1]["filename"] if documents else "—")
 
-    st.subheader("Indexed Documents (this session)")
+    st.subheader("Indexed Documents")
     if not documents:
         st.caption("No documents indexed yet — upload one on the **Upload Documents** page.")
     else:
         _render_table(
             documents,
             columns={
+                "document_id": "Document ID",
                 "filename": "Filename",
                 "chunks_created": "Chunks",
-                "processing_time_ms": "Processing Time (ms)",
                 "uploaded_at": "Uploaded At",
             },
             empty_message="",
@@ -141,21 +144,13 @@ def render_upload() -> None:
 
         if result:
             st.success(
-                f"✅ Indexed **{result['filename']}** in {result['processing_time_ms']} ms"
+                f"✅ Indexed **{result['filename']}** in {result['processing_time_ms']} ms — "
+                "see the **Dashboard** for the updated document list."
             )
             with st.container(border=True):
                 col1, col2 = st.columns(2)
                 col1.metric("Chunks Created", result["chunks_created"])
                 col2.metric("Status", result["status"])
-
-            st.session_state.uploaded_documents.append(
-                {
-                    "filename": result["filename"],
-                    "chunks_created": result["chunks_created"],
-                    "processing_time_ms": result["processing_time_ms"],
-                    "uploaded_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                }
-            )
 
 
 def _confidence_badge(confidence: int) -> None:

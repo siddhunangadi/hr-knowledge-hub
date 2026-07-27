@@ -12,11 +12,23 @@ from app.ingestion.ingestion_service import (
 )
 from app.ingestion.parser import DocumentParsingError
 from app.ingestion.vector_store import VectorStoreError
-from app.models.schemas import UploadResponse
-from app.repositories.document_repository import DocumentRepositoryError
+from app.models.schemas import DocumentSummary, UploadResponse
+from app.repositories.document_repository import DocumentRepositoryError, list_documents
 
 router = APIRouter(prefix="/api/documents")
 logger = logging.getLogger(__name__)
+
+
+@router.get("", response_model=list[DocumentSummary])
+def get_documents() -> list[DocumentSummary]:
+    """Return every uploaded document, for the Streamlit dashboard to display."""
+    try:
+        documents = list_documents()
+    except DocumentRepositoryError as exc:
+        logger.exception("Failed to list documents")
+        raise HTTPException(status_code=502, detail="Document storage unavailable") from exc
+
+    return [DocumentSummary(**doc) for doc in documents]
 
 
 @router.post("/upload", response_model=UploadResponse)

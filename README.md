@@ -2,6 +2,12 @@
 
 AI-powered Internal HR Knowledge Assistant using Hybrid Retrieval-Augmented Generation (Hybrid RAG).
 
+**Version:** v1.0.0
+
+## Project Status
+
+**Stable — Portfolio Ready.** All core features (ingestion, hybrid retrieval, grounded generation, dashboard) are implemented and verified end-to-end. See [CHANGELOG.md](CHANGELOG.md) for release notes and known limitations.
+
 ## Overview
 
 HR Knowledge Hub lets HR teams upload internal documents — handbooks, policies, hiring guidelines — and ask natural-language questions about them. The system retrieves relevant passages using **hybrid search** (dense vector search + BM25 keyword search, merged with Reciprocal Rank Fusion and reranked by an NVIDIA NIM reranker), then generates a grounded answer with citations back to the source documents.
@@ -80,12 +86,15 @@ backend/
     models/          # Shared Pydantic request/response schemas
     utils/           # Logging setup
     main.py          # FastAPI app entrypoint
+  tests/             # pytest suite (external services mocked)
+  pytest.ini
 frontend/
   streamlit_app.py   # Dashboard, upload, search & chat, retrieval inspector
 requirements.txt
 .env.example
 Dockerfile
 docker-compose.yml
+CHANGELOG.md
 ```
 
 ## Features
@@ -95,7 +104,9 @@ docker-compose.yml
 - **Retrieval Inspector** — a debug mode that returns the intermediate results from every retrieval stage, for interview/demo purposes.
 - **Grounded answer generation** — the LLM only sees retrieved context, never outside knowledge, and returns an honest "not found" message when retrieval confidence is too low.
 - **Citations** — every answer is backed by the filename and page number it came from.
-- **Streamlit UI** — a dashboard of documents indexed this session, an upload page, a search/chat page, and a retrieval inspector.
+- **Document listing** — `GET /api/documents` returns every indexed document with its chunk count, backing a dashboard that persists across page refreshes.
+- **Streamlit UI** — a dashboard of indexed documents, an upload page, a search/chat page, and a retrieval inspector.
+- **Test suite** — a small pytest suite (`backend/tests/`) covering upload validation, all three search modes, citation/no-answer generation, and the API endpoints.
 
 ## Hybrid RAG Pipeline
 
@@ -160,6 +171,15 @@ cp .env.example .env   # then fill in your API keys
 docker-compose up --build
 ```
 
+### Running Tests
+
+```bash
+cd backend
+pytest
+```
+
+The test suite mocks all external services (NVIDIA, Pinecone, Supabase), so no API keys are required to run it.
+
 ## Environment Variables
 
 See `.env.example` for the full list. In summary:
@@ -190,10 +210,11 @@ _Placeholder — add screenshots of each Streamlit page here._
 
 These are realistic next steps, not enterprise promises:
 
-- Persist the dashboard's document list server-side (currently session-scoped in Streamlit) via a simple `GET /api/documents` listing endpoint.
+- Document delete/update endpoints — currently upload-only.
 - Deduplicate identical citations when multiple retrieved chunks come from the same page.
 - Add a small evaluation set to measure retrieval quality (precision@k) across search modes.
 - Basic rate limiting on the upload endpoint.
+- Pagination on `GET /api/documents` once the document count grows beyond portfolio scale.
 
 ## License
 
