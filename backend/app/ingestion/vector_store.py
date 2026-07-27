@@ -12,6 +12,11 @@ class VectorStoreError(Exception):
     """Raised when a Pinecone read or write fails."""
 
 
+# Pinecone rejects any single upsert request over 4 MB. 100 vectors keeps
+# each request well under that limit regardless of document size.
+UPSERT_BATCH_SIZE = 100
+
+
 @lru_cache
 def _get_index():
     """Return the Pinecone index, creating the connection once and reusing it."""
@@ -36,8 +41,10 @@ def index_chunks(chunks: list[Chunk], embeddings: list[list[float]]) -> None:
         for chunk, embedding in zip(chunks, embeddings)
     ]
 
+    index = _get_index()
     try:
-        _get_index().upsert(vectors=vectors)
+        for i in range(0, len(vectors), UPSERT_BATCH_SIZE):
+            index.upsert(vectors=vectors[i : i + UPSERT_BATCH_SIZE])
     except Exception as exc:
         raise VectorStoreError(f"Failed to upsert vectors to Pinecone: {exc}") from exc
 

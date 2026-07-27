@@ -58,9 +58,12 @@ def ingest_document(filename: str, content_type: str, file_bytes: bytes) -> Inge
 
     embeddings = embedding_client.embed([chunk.text for chunk in chunks])
 
+    # Index into Pinecone before writing to Supabase: if Pinecone fails
+    # (e.g. a batch is rejected), nothing gets persisted, so a retry starts
+    # clean instead of leaving an orphaned document with no vectors.
+    index_chunks(chunks, embeddings)
     save_document(document_id, filename)
     save_chunks(chunks)
-    index_chunks(chunks, embeddings)
 
     processing_time_ms = int((time.perf_counter() - start_time) * 1000)
 
