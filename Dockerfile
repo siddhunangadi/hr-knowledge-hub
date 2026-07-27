@@ -11,4 +11,4 @@ COPY .streamlit/ .streamlit/
 
 EXPOSE 8501
 
-CMD ["sh", "-c", "(cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000) & streamlit run frontend/streamlit_app.py --server.address=0.0.0.0 --server.port 8501"]
+CMD ["sh", "-c", "(cd backend && uvicorn app.main:app --host 127.0.0.1 --port 8000) & streamlit run frontend/streamlit_app.py --server.address=0.0.0.0 --server.port 8501"]
