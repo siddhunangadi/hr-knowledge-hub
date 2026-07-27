@@ -8,3 +8,4 @@ env/
 *.egg-info/
 .pytest_cache/
 .DS_Store
+.claude/
