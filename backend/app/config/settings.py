@@ -1,14 +1,21 @@
 """Centralized application configuration loaded from environment variables."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolved relative to this file (not the process's cwd) so `.env` at the
+# project root is found whether uvicorn is launched from there or from
+# backend/. Harmless if missing — e.g. in Docker, where env vars are
+# injected directly instead of via a mounted .env file.
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or .env file."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, extra="ignore")
 
     app_name: str = "HR Knowledge Hub"
     app_version: str = "0.1.0"
