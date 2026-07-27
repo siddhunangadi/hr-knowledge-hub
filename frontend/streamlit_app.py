@@ -41,10 +41,10 @@ def _get_json(path: str) -> dict | list | None:
         return None
 
 
-def _post_json(path: str, payload: dict) -> dict | None:
+def _post_json(path: str, payload: dict, timeout: int = 60) -> dict | None:
     """POST JSON to the backend and return the parsed response, or None on error."""
     try:
-        response = requests.post(f"{BACKEND_URL}{path}", json=payload, timeout=60)
+        response = requests.post(f"{BACKEND_URL}{path}", json=payload, timeout=timeout)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as exc:
@@ -174,9 +174,12 @@ def render_search() -> None:
 
     if st.button("Ask", type="primary") and query:
         with st.spinner("Retrieving context and generating an answer..."):
+            # Longer than the default POST timeout: the LLM call alone can
+            # take up to 90s (see llm_client.py), on top of retrieval time.
             result = _post_json(
                 "/api/chat",
                 {"query": query, "top_k": top_k, "search_mode": search_mode, "debug": True},
+                timeout=120,
             )
         if result:
             # /api/chat doesn't echo the query back, so store it alongside

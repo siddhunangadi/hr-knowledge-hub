@@ -26,7 +26,10 @@ class NVIDIALLMClient:
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.2,
                 },
-                timeout=60,
+                # The 70B model occasionally takes longer than 60s, especially
+                # with a full top_k=8 context — 60 was too tight and caused
+                # real read-timeout failures in practice.
+                timeout=90,
             )
             response.raise_for_status()
         except requests.RequestException as exc:
