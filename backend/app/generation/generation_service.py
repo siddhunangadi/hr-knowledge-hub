@@ -6,10 +6,6 @@ from app.generation.llm_client import llm_client
 from app.generation.prompt_builder import NO_ANSWER_MESSAGE, build_prompt
 from app.retrieval.retrieval_service import RankedChunk, search
 
-# Below this confidence, we treat retrieval as "nothing relevant found" and
-# skip the LLM call entirely rather than risk a hallucinated answer.
-CONFIDENCE_THRESHOLD = 40
-
 
 def _estimate_confidence(chunks: list[RankedChunk]) -> int:
     """Estimate answer confidence from retrieval scores, as a 0-100 percentage.
@@ -48,21 +44,28 @@ def _build_citations(chunks: list[RankedChunk]) -> list[dict]:
 
 
 def generate_answer(query: str, top_k: int, search_mode: str, debug: bool) -> dict:
-    """Retrieve chunks, ground the LLM's answer in them, and return answer + citations + confidence."""
+    """Retrieve chunks, ground the LLM's answer in them, and return answer + citations + confidence.
+
+    Confidence is informational only — it does not gate whether the LLM is
+    called. The prompt's own grounding rule ("if the answer isn't in the
+    context, say so") is the actual safety net against hallucination; a low
+    reranker score on the top chunk doesn't necessarily mean the chunk is
+    wrong, so the LLM is trusted to make that call itself.
+    """
     retrieval = search(query, top_k=top_k, search_mode=search_mode, debug=debug)
     chunks = retrieval["results"]
     confidence = _estimate_confidence(chunks)
 
-    if not chunks or confidence < CONFIDENCE_THRESHOLD:
+    if not chunks:
         response = {"answer": NO_ANSWER_MESSAGE, "confidence": confidence, "citations": []}
     else:
         prompt = build_prompt(query, chunks)
         answer = llm_client.generate(prompt)
-        response = {
-            "answer": answer,
-            "confidence": confidence,
-            "citations": _build_citations(chunks),
-        }
+        # No citations when the LLM itself decided the context didn't answer
+        # the question — showing "sources" next to a "not found" message
+        # would be self-contradictory.
+        citations = [] if answer == NO_ANSWER_MESSAGE else _build_citations(chunks)
+        response = {"answer": answer, "confidence": confidence, "citations": citations}
 
     if debug:
         response["debug"] = retrieval.get("debug")
