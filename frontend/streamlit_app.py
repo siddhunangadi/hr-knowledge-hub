@@ -19,15 +19,26 @@ st.set_page_config(page_title="HR Knowledge Hub", page_icon="📄", layout="wide
 st.markdown(
     """
     <style>
-    .block-container {padding-top: 2.5rem; max-width: 1080px;}
+    .block-container {padding-top: 2rem; max-width: 1080px;}
     h1, h2, h3 {font-weight: 600; letter-spacing: -0.01em;}
     [data-testid="stMetricValue"] {font-weight: 600; font-size: 1.75rem;}
     [data-testid="stMetricLabel"] {color: #6B7280;}
     div[data-testid="stStatusWidget"] {display: none;}
-    .status-row {display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; margin: 0.25rem 0 0.75rem;}
+    section[data-testid="stSidebar"] {display: none;}
+
+    .topbar {display: flex; align-items: center; justify-content: space-between;
+             padding-bottom: 0.5rem;}
+    .topbar h1 {font-size: 1.4rem; margin: 0;}
+    .status-row {display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;}
     .status-dot {width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0;}
     .status-dot.ok {background: #12B76A;}
     .status-dot.err {background: #F04438;}
+
+    div[role="radiogroup"] {gap: 0.25rem;}
+    div[role="radiogroup"] label {
+        border-radius: 8px; padding: 0.35rem 0.75rem; margin-right: 0.25rem;
+    }
+
     .chip {display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem;
            border-radius: 999px; font-size: 0.85rem; font-weight: 500;}
     .chip.high {background: #ECFDF3; color: #027A48;}
@@ -96,35 +107,38 @@ def _render_table(rows: list[dict], columns: dict[str, str], empty_message: str)
     st.dataframe(renamed, use_container_width=True, hide_index=True)
 
 
-def render_sidebar() -> str:
-    """Render the sidebar (branding, backend health, nav) and return the selected page."""
-    with st.sidebar:
-        st.title("HR Knowledge Hub")
-        st.caption("AI-powered internal HR assistant · Hybrid RAG")
-        st.divider()
+def render_topbar() -> str:
+    """Render the topbar (branding, backend health, nav) and return the selected page."""
+    try:
+        response = requests.get(f"{BACKEND_URL}/health", timeout=5)
+        connected = response.ok
+        label = "Connected" if connected else f"Backend returned {response.status_code}"
+    except requests.RequestException:
+        connected = False
+        label = "Cannot reach backend"
 
-        try:
-            response = requests.get(f"{BACKEND_URL}/health", timeout=5)
-            connected = response.ok
-            label = "Connected" if connected else f"Backend returned {response.status_code}"
-        except requests.RequestException:
-            connected = False
-            label = "Cannot reach backend"
+    left, right = st.columns([3, 1])
+    with left:
         st.markdown(
-            f'<div class="status-row"><span class="status-dot {"ok" if connected else "err"}"></span>'
-            f"{label}</div>",
+            '<div class="topbar"><h1>HR Knowledge Hub</h1></div>'
+            '<div style="color: #6B7280; margin-top: -0.5rem;">AI-powered internal HR assistant · Hybrid RAG</div>',
+            unsafe_allow_html=True,
+        )
+    with right:
+        st.markdown(
+            f'<div class="status-row" style="justify-content: flex-end; margin-top: 0.5rem;">'
+            f'<span class="status-dot {"ok" if connected else "err"}"></span>{label}</div>',
             unsafe_allow_html=True,
         )
 
-        st.divider()
-        page = st.radio(
-            "Navigate",
-            ["Dashboard", "Upload Documents", "Search & Chat", "Retrieval Inspector"],
-        )
-
-        st.divider()
-        st.caption("Built with FastAPI, Pinecone, Supabase, and NVIDIA NIM.")
-        return page
+    page = st.radio(
+        "Navigate",
+        ["Dashboard", "Upload Documents", "Search & Chat", "Retrieval Inspector"],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+    st.divider()
+    return page
 
 
 def render_dashboard() -> None:
@@ -132,12 +146,8 @@ def render_dashboard() -> None:
     st.header("Dashboard")
 
     documents = _get_json("/api/documents") or []
-    total_chunks = sum(doc["chunks_created"] for doc in documents)
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Documents", len(documents))
-    col2.metric("Chunks", total_chunks)
-    col3.metric("Vectors", total_chunks, help="One Pinecone vector per chunk")
+    st.metric("Documents", len(documents))
 
     st.divider()
     st.subheader("Indexed Documents")
@@ -263,7 +273,7 @@ def render_inspector() -> None:
         )
 
 
-page = render_sidebar()
+page = render_topbar()
 
 if page == "Dashboard":
     render_dashboard()
