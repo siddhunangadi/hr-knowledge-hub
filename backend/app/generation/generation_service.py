@@ -14,17 +14,22 @@ CONFIDENCE_THRESHOLD = 40
 def _estimate_confidence(chunks: list[RankedChunk]) -> int:
     """Estimate answer confidence from retrieval scores, as a 0-100 percentage.
 
-    Formula: average the retrieved chunks' scores, then squash that average
-    through a sigmoid (1 / (1 + e^-x)) into a 0-1 range and scale to 0-100.
-    A sigmoid is used because raw scores are unbounded and mean different
-    things per search_mode (BM25 score, cosine similarity, or reranker
-    logit) — this gives one consistent 0-100 scale regardless of which
-    produced them.
+    Formula: take the top-ranked chunk's score (chunks are already sorted
+    best-first) and squash it through a sigmoid (1 / (1 + e^-x)) into a 0-1
+    range, then scale to 0-100. A sigmoid is used because raw scores are
+    unbounded and mean different things per search_mode (BM25 score, cosine
+    similarity, or reranker logit) — this gives one consistent 0-100 scale
+    regardless of which produced them.
+
+    Only the top chunk's score is used, not an average across all returned
+    chunks: the answer is grounded primarily in the single best match, and
+    averaging in weaker lower-ranked chunks would understate confidence in
+    an otherwise strong top result.
     """
     if not chunks:
         return 0
-    avg_score = sum(chunk.score for chunk in chunks) / len(chunks)
-    probability = 1 / (1 + math.exp(-avg_score))
+    top_score = chunks[0].score
+    probability = 1 / (1 + math.exp(-top_score))
     return round(probability * 100)
 
 
