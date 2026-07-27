@@ -16,6 +16,18 @@ SEARCH_MODES = ["hybrid", "semantic", "keyword"]
 
 st.set_page_config(page_title="HR Knowledge Hub", page_icon="📄", layout="wide")
 
+st.markdown(
+    """
+    <style>
+    .block-container {padding-top: 2.5rem; max-width: 1100px;}
+    h1, h2, h3 {font-weight: 600;}
+    [data-testid="stMetricValue"] {font-weight: 600;}
+    div[data-testid="stStatusWidget"] {display: none;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 if "last_chat_result" not in st.session_state:
     st.session_state.last_chat_result = None
 
@@ -76,19 +88,19 @@ def _render_table(rows: list[dict], columns: dict[str, str], empty_message: str)
 def render_sidebar() -> str:
     """Render the sidebar (branding, backend health, nav) and return the selected page."""
     with st.sidebar:
-        st.title("📄 HR Knowledge Hub")
-        st.caption("AI-powered Internal HR Knowledge Assistant using Hybrid RAG")
+        st.title("HR Knowledge Hub")
+        st.caption("AI-powered internal HR assistant · Hybrid RAG")
         st.divider()
 
         st.subheader("Backend Status")
         try:
             response = requests.get(f"{BACKEND_URL}/health", timeout=5)
             if response.ok:
-                st.success("🟢 Connected")
+                st.success("Connected")
             else:
-                st.error(f"🔴 Backend returned {response.status_code}")
+                st.error(f"Backend returned {response.status_code}")
         except requests.RequestException:
-            st.error("🔴 Cannot reach backend")
+            st.error("Cannot reach backend")
         st.caption(BACKEND_URL)
 
         st.divider()
@@ -144,7 +156,7 @@ def render_upload() -> None:
 
         if result:
             st.success(
-                f"✅ Indexed **{result['filename']}** in {result['processing_time_ms']} ms — "
+                f"Indexed **{result['filename']}** in {result['processing_time_ms']} ms — "
                 "see the **Dashboard** for the updated document list."
             )
             with st.container(border=True):
@@ -156,11 +168,11 @@ def render_upload() -> None:
 def _confidence_badge(confidence: int) -> None:
     """Render a color-coded confidence badge: high (green), medium (orange), low (red)."""
     if confidence >= 70:
-        st.success(f"🟢 High confidence — {confidence}%")
+        st.success(f"High confidence — {confidence}%")
     elif confidence >= 40:
-        st.warning(f"🟠 Medium confidence — {confidence}%")
+        st.warning(f"Medium confidence — {confidence}%")
     else:
-        st.error(f"🔴 Low confidence — {confidence}%")
+        st.error(f"Low confidence — {confidence}%")
 
 
 def render_search() -> None:
