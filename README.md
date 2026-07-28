@@ -4,6 +4,8 @@ AI-powered Internal HR Knowledge Assistant using Hybrid Retrieval-Augmented Gene
 
 **Version:** v1.0.0
 
+**Live Demo:** [hr-knowledge-hub.onrender.com](https://hr-knowledge-hub.onrender.com)
+
 ## Project Status
 
 **Stable — Portfolio Ready.** All core features (ingestion, hybrid retrieval, grounded generation, dashboard) are implemented and verified end-to-end. See [CHANGELOG.md](CHANGELOG.md) for release notes and known limitations.
